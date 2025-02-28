@@ -167,14 +167,15 @@ def filter_rain_events(s_daily, ffill_lim=1, bfill_lim=1, quantile=0.25):
     return s_daily
 
 # compute the loss of soil moisture/ET for each dry-down event. Dry-down events are identified as runs of non-NA values.
-def compute_deltas(s_daily, et_daily):
+def compute_deltas(s_daily, et_daily, max_width=14):
     """
     Identifies the loss of soil moisture and total evapotranspiration for each contiguous (unbroken) block of soil moisture data in the dataset. If the data has been run through filter_rain_events, then each contiguous block is said to represent one "dry-down event."
 
     s_daily, et_daily: dataframes containing soil water storage and ET timeseries data, respectively. Must have identical indexes.
+    max_width: the maximum allowable length of a given drydown event, in days. Events longer than max_width will be chopped up into at most max_width-length chunks.
 
     Returns: a containing the start date, end date, total soil moisture loss, and total ET for each dry-down event.
-    """
+    """     
     # compute start/end indices
     runs = {}
     # max_len = (0, None, None)
@@ -184,20 +185,27 @@ def compute_deltas(s_daily, et_daily):
         i = 0
         starts = []
         ends = []
-        for ti in range(1, x.shape[0] - 1):
+        runlen = 0
+        for ti in range(1, x.shape[0] - 1): 
+            # detect when we leave a region of nans, record the start of a run
             if np.isnan(x[ti - 1]) and ~np.isnan(x[ti]):
                 starts.append(ti)
+                runlen = 0
+            
+            # increment the runlength if appropriate
+            if ~np.isnan(x[ti]): runlen += 1
+            
+            # detect when we are about to enter a region of nans, record the end of a run
             if ~np.isnan(x[ti]) and np.isnan(x[ti + 1]):
                 ends.append(ti)
+           
+            # split a run if we reach max width
+            if runlen == max_width:
+                x[ti + 1] = np.nan
+                
         if len(starts) > len(ends):
             ends.append(ti)
         runs[c] = (starts, ends)
-        
-    #     for s, e in zip(starts, ends):
-    #         if e-s > max_len[0]: 
-    #             max_len = (e-s, s, e)
-    #             max_c = c
-    # print(max_len, max_c)
 
     # compute delta-h for each dry-down event
     delta_s = {}
@@ -278,12 +286,11 @@ def compute_field_capacity(df, quantile=0.97, scale=0.8):
 import inspect
 def cut_S_by_field_capacity(site_data, pits, depths=[5, 10, 15, 30, 50, 75, 100], quantile=0.97, scale=0.8):
     VWCmax = get_max_VWC_to_depth(site_data, pits, depths)
-    VWCmax = VWCmax[sorted(VWCmax)]
     S = site_data.filter(regex="^h_[ABCD]-[0-9]+$")
-    S = S[sorted(S)]
     field_capacity = compute_field_capacity(site_data.filter(regex="VWC"), quantile, scale)
-    S = np.where(VWCmax > field_capacity, np.nan, S)
-    return S
+    out = np.where(VWCmax > field_capacity, np.nan, S)
+    out = pd.DataFrame(out, columns=S.columns).set_index(S.index)
+    return out
 
 ######################################################
 # Statistics
