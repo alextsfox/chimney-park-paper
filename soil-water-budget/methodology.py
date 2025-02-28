@@ -17,7 +17,7 @@ from scipy import stats, odr
 from statsmodels.formula.api import ols
 
 ########################################################
-# Deriving "raw" data
+# Computations and manipulations of raw timeseries data
 ########################################################
 
 def extrapolate_vwc(df, depths=[5, 10, 15, 30, 50], new_depths=[75, 100], pits=["A", "B", "C"], method:Literal["linear","exponential","quadratic", "power"]="linear", interpolate=True):
@@ -241,6 +241,49 @@ def compute_deltas(s_daily, et_daily):
     
     return drydown_fluxes
 
+def cross_fill(cols, ref, *alts):
+    """
+    gap-fills the specified column in the reference dataframe using data from the provided alternatives.
+    cols: list of column names to fill
+    ref: the primary data frame to gapfill
+    *alts: dataframes to use for gapfilling specified columns in ref, in preferential order (first is most preferred)
+    returns: out: gap-filled dataframe
+    """
+    ref_column_order = ref.columns
+    ref_extra = ref.drop(columns=cols) # save for later
+    ref = ref.loc[:, cols]
+
+    # align reference and alt dataframe indexes
+    alts = list(alts)
+    for i, df in enumerate(alts):
+        alts[i] = df.merge(ref[[]], left_index=True, right_index=True, how="right").loc[:, cols]
+    # gap-fill
+    ref[cols] = np.select(condlist=[~ref.isna()] + [~df.isna() for df in alts], choicelist=[ref] + alts, default=np.nan)
+    # rebuild dataframe
+    out = pd.concat([ref, ref_extra], axis=1)[ref_column_order]
+    return out
+    
+def get_max_VWC_to_depth(df, pits, depths=[5, 10, 15, 30, 50, 75, 100]):
+    max_VWC_to_z = pd.DataFrame({
+        f"VWCmax_{p}_{z}": df[[f"VWC_{p}-{z}" for z in depths[:iz+1]]].max(1)
+        for p, (iz, z) in itertools.product(pits, enumerate(depths))
+    })
+    return max_VWC_to_z
+    
+def compute_field_capacity(df, quantile=0.97, scale=0.8):
+    theta_s = df.quantile([quantile]).max(1).values[0]
+    field_capacity = theta_s*scale
+    return field_capacity
+
+import inspect
+def cut_S_by_field_capacity(site_data, pits, depths=[5, 10, 15, 30, 50, 75, 100], quantile=0.97, scale=0.8):
+    VWCmax = get_max_VWC_to_depth(site_data, pits, depths)
+    VWCmax = VWCmax[sorted(VWCmax)]
+    S = site_data.filter(regex="^h_[ABCD]-[0-9]+$")
+    S = S[sorted(S)]
+    field_capacity = compute_field_capacity(site_data.filter(regex="VWC"), quantile, scale)
+    S = np.where(VWCmax > field_capacity, np.nan, S)
+    return S
 
 ######################################################
 # Statistics

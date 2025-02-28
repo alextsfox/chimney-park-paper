@@ -79,3 +79,13 @@ def get_WY_and_season(ts):
         season = np.select(condlist=season_dict.values(), choicelist=season_dict.keys())
         WY_season = [s + " " + str(iwy) for s, iwy in zip(season, WY)]
     return WY, season, WY_season
+
+def make_timeseries_continuous(incomplete_df, tmin, tmax, freq):
+    """take a timeseries with discontinuous time index and add in missing times. THIS IS NOT GAP FILLING -- all empty times will be populated with nans.
+    tmin, tmax: the min and max time to extend the timeseries to
+    freq: the time interval between datapoints (fed to pd.date_range)
+    incomplete_df: the dataframe to make continuous. MUST HAVE A DATETIME INDEX"""
+
+    ref_ts = pd.DataFrame(dict(TIMESTAMP=pd.date_range(tmin, tmax, freq="30min"))).set_index(incomplete_df.index.name)
+    return incomplete_df.merge(ref_ts, left_index=True, right_index=True, how="right")
+
