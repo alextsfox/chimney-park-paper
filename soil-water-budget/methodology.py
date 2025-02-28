@@ -191,12 +191,13 @@ def compute_deltas(s_daily, et_daily, max_width=14):
                 starts.append(ti)
                 runlen = 0
             
-            # increment the runlength if appropriate
-            if ~np.isnan(x[ti]): runlen += 1
             
             # detect when we are about to enter a region of nans, record the end of a run
             if ~np.isnan(x[ti]) and np.isnan(x[ti + 1]):
                 ends.append(ti)
+            
+            # increment the runlength if appropriate
+            if ~np.isnan(x[ti]): runlen += 1
            
             # split a run if we reach max width
             if runlen == max_width:
