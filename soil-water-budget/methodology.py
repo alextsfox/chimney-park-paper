@@ -166,13 +166,12 @@ def filter_rain_events(s_daily, ffill_lim=1, bfill_lim=1, quantile=0.25):
     s_daily = s_daily.where(~filter)
     return s_daily
 
-# compute the loss of soil moisture/ET for each dry-down event. Dry-down events are identified as runs of non-NA values.
 def compute_deltas(s_daily, et_daily, max_width=14):
     """
     Identifies the loss of soil moisture and total evapotranspiration for each contiguous (unbroken) block of soil moisture data in the dataset. If the data has been run through filter_rain_events, then each contiguous block is said to represent one "dry-down event."
 
     s_daily, et_daily: dataframes containing soil water storage and ET timeseries data, respectively. Must have identical indexes.
-    max_width: the maximum allowable length of a given drydown event, in days. Events longer than max_width will be chopped up into at most max_width-length chunks.
+    max_width: the maximum allowable length of a given drydown event, in days. Events longer than max_width will be chopped up into even sized chunks.
 
     Returns: a containing the start date, end date, total soil moisture loss, and total ET for each dry-down event.
     """     
@@ -202,6 +201,7 @@ def compute_deltas(s_daily, et_daily, max_width=14):
             # split a run if we reach max width
             if runlen == max_width:
                 x[ti + 1] = np.nan
+                runlen = 0
                 
         if len(starts) > len(ends):
             ends.append(ti)
