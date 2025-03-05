@@ -191,12 +191,13 @@ def compute_deltas(s_daily, et_daily, max_width=14):
                 starts.append(ti)
                 runlen = 0
             
-            # increment the runlength if appropriate
-            if ~np.isnan(x[ti]): runlen += 1
             
             # detect when we are about to enter a region of nans, record the end of a run
             if ~np.isnan(x[ti]) and np.isnan(x[ti + 1]):
                 ends.append(ti)
+            
+            # increment the runlength if appropriate
+            if ~np.isnan(x[ti]): runlen += 1
            
             # split a run if we reach max width
             if runlen == max_width:
@@ -547,12 +548,20 @@ def compute_usable_s(data, depths, pits):
     return useful_s
 
 def YS_to_datetime(ys):
-    """helper function to convert 2-season year-season value (2019.0, 2019.5)
+    """helper function to convert 2-season year-season value (2019.0, 2019.5 or Spring 2019, Summer 2020 etc)
     to a datetime"""
-    season = ys % 1
-    month = 7
-    month = np.where(season == 0, 1, 7)
-    year = ys.astype(int)
+    try:
+        season = ys % 1
+        month = 7
+        month = np.int32(np.where(season == 0, 4, 7))
+        year = np.int32(ys)
+    except TypeError:
+        year = np.int32(ys.str[7:])
+        month = np.int32(np.select(
+            (ys.str[:6] == "Winter", ys.str[:6] == "Spring", ys.str[:6] == "Summer"), 
+            (10, 4, 7),
+        ))
+        
     date_strings = [f"{y}-{m}" for y, m in zip(year, month)]
     return pd.to_datetime(date_strings)
 
@@ -616,6 +625,8 @@ def compute_uptake_depth(drydown_fluxes):
     for c in best_depths_rounded:
         best_depths_rounded[c] = round_depths(best_depths_rounded[c], np.array([100, 75, 50, 30, 15, 10, 5]))
     best_depths_rounded["TIMESTAMP"] = YS_to_datetime(best_depths_rounded.index)
+    best_depths["TIMESTAMP"] = YS_to_datetime(best_depths.index)
+    best_depth_stderrs["TIMESTAMP"] = YS_to_datetime(best_depth_stderrs.index)
     
     warnings.resetwarnings()
     return best_depths, best_depth_stderrs, best_depths_rounded
