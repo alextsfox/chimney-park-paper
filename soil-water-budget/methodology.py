@@ -293,6 +293,16 @@ def cut_S_by_field_capacity(site_data, pits, depths=[5, 10, 15, 30, 50, 75, 100]
     out = pd.DataFrame(out, columns=S.columns).set_index(S.index)
     return out
 
+
+def compute_cumulative_flux_within_timespan(flux_data, date_start, date_end):
+    # fundamental theorem of calculus to compute total flux between date_start and date_end
+    tminus_start,tminus_end = 366 - pd.to_datetime([date_start, date_end]).dayofyear
+    cumulative = (
+        flux_data.loc[pd.date_range("2019-01-02", "2025-01-02", freq="1YE") - pd.Timedelta(f"{tminus_end}d")].filter(regex=".*anncum|^WY$").reset_index() 
+        - flux_data.loc[pd.date_range("2019-01-02", "2025-01-02", freq="1YE") - pd.Timedelta(f"{tminus_start}d")].filter(regex=".*anncum|^WY$").reset_index()
+    )
+    return cumulative
+
 ######################################################
 # Statistics
 ######################################################
@@ -313,77 +323,6 @@ def compute_drydown_slope(drydown):
     )
 
     return (-cov/var).rename(columns=dict(delta_s="Slope"))
-    
-# def compute_slopes(drydown_fluxes):
-#     """
-#     Compute the "drydown slope" for a dataframe of drydown fluxes: the closure of the soil moisture-et water budget
-
-#     drydown_fluxes: a long-format dataframe:
-#         * a column Site indicating site (key NF, UF, SF)
-#         * a column Height indicating height (key Ecosystem, Understory)
-#         * a column z indicating soil depth (key 5, 10, 15, 30, 50, 75, 100)
-#         * a column delta_s of soil water loss per drydown event
-#         * a column et of total ET per drydown event
-
-#     returns: a dataframe giving the slope of the dS ~ SumET relationship for each site, height, and depth.
-#     """
-#     sites = ["NF", "UF", "SF"]
-#     heights = ["Ecosystem", "Understory"]
-#     depths = [5, 10, 15, 30, 50, 75, 100]
-    
-#     slope_dict = {
-#         ("Ecosystem", "NF"):[],
-#         ("Ecosystem", "UF"):[],
-#         ("Ecosystem", "SF"):[],
-#         ("Understory", "NF"):[],
-#         ("Understory", "UF"):[],
-#     }
-
-#     stderr_dict = {
-#         ("Ecosystem", "NF"):[],
-#         ("Ecosystem", "UF"):[],
-#         ("Ecosystem", "SF"):[],
-#         ("Understory", "NF"):[],
-#         ("Understory", "UF"):[],
-#     }
-        
-#     for (h, s), z in itertools.product(slope_dict, depths):
-#         h_old = h
-#         if h == "Ecosystem" and s == "SF": h = "Understory"
-
-#         # # avoid "pooling" in the springtime: limit SF analysis to June+
-#         # if s == "SF": months = [7, 8, 9, 10]
-#         # else: months = [5, 6, 7, 8, 9, 10]
-            
-#         df = (
-#             drydown_fluxes
-#             .query("Height == @h and z == @z and Site == @s")
-#             .copy()
-#             .dropna()
-#         )
-#         h = h_old
-#         # m = ols("et ~ delta_s", data=df).fit()
-#         # summary_table = m.summary().tables[1]
-#         # slope = float(summary_table.data[2][1])
-#         # stderr = float(summary_table.data[2][2])*1.96
-#         try:
-#             m = stats.linregress(df["delta_s"], df["et"])
-#             slope, stderr = m.slope, m.stderr
-#             # print(slope, stderr)
-#         except ValueError:
-#             slope, stderr = np.nan, np.nan
-#         if stderr <= 0: stderr = np.nan
-#         slope_dict[(h, s)].append(slope)
-#         stderr_dict[(h, s)].append(stderr)
-    
-#     slopes = pd.DataFrame(slope_dict)
-#     slopes["Depth"] = depths
-#     slopes = slopes.set_index("Depth")
-
-#     stderrs = pd.DataFrame(stderr_dict)
-#     stderrs["Depth"] = depths
-#     stderrs = stderrs.set_index("Depth")
-#     return slopes, stderrs
 
 def compute_slopes(drydown_fluxes, months=[4, 5, 6, 7, 8, 9, 10]):
     """
@@ -459,6 +398,10 @@ def compute_slopes(drydown_fluxes, months=[4, 5, 6, 7, 8, 9, 10]):
 ######################################################
 # Biometeorological equations
 ######################################################
+def ZDW_01(PET, P):
+    w=1.06
+    return (1 + w*PET/P)/(1 + w*(PET/P) + (PET/P)**-1)
+
 def delta_tetens(Tc):
     """slope of the vapor pressure curve at temperature Tc in °C"""
     return np.where(
