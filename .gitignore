@@ -1,4 +1,3 @@
 ./footprint_analysis/filtered_footprints/*.csv
 **/*slurm*
-**/*.png
 **/*.csv
