@@ -296,26 +296,29 @@ def cut_S_by_field_capacity(site_data, pits, depths=[5, 10, 15, 30, 50, 75, 100]
 
 def compute_cumulative_flux_within_timespan(flux_data, date_start, date_end):
     # fundamental theorem of calculus to compute total flux between date_start and date_end
-    tminus_start,tminus_end = 366 - pd.to_datetime([date_start, date_end]).dayofyear
+    tminus_start, tminus_end = 366 - pd.to_datetime([date_start, date_end]).dayofyear
     
-    freq="1YE"
-    if int(date_start.split("-")[1]) >= 10: freq="1YS"
-    starts = pd.date_range("2019-01-01", "2025-01-01", freq=freq) - pd.Timedelta(f"{tminus_start}d")
+    starts = pd.date_range("2019-01-01", "2025-12-31", freq="1YE") - pd.Timedelta(f"{tminus_start}d")
+    if int(date_start.split("-")[1]) >= 10:
+        starts = pd.date_range("2019-01-01", "2025-01-01", freq="YS") - pd.Timedelta(f"{tminus_start}d")
     
-    freq="1YE"
-    if int(date_end.split("-")[1]) >= 10: freq="1YS"
-    ends = pd.date_range("2019-01-01", "2025-01-01", freq=freq) - pd.Timedelta(f"{tminus_end}d")
-    
+    ends = pd.date_range("2019-01-01", "2025-12-31", freq="1YE") - pd.Timedelta(f"{tminus_end}d")
+    if int(date_end.split("-")[1]) >= 10: 
+        ends = pd.date_range("2019-01-01", "2025-01-01", freq="1YS") - pd.Timedelta(f"{tminus_end}d")
+        
+    while (starts[-1] not in flux_data.index) or (ends[-1] not in flux_data.index):
+        starts = starts[:-1]
+        ends = ends[:-1]
+        
     cumulative = (
         flux_data.loc[starts].filter(regex=".*anncum|^WY$").reset_index() 
-        - flux_data.loc[startsrt].filter(regex=".*anncum|^WY$").reset_index()
+        - flux_data.loc[ends].filter(regex=".*anncum|^WY$").reset_index()
     )
-
     
-    
-    cumulative["t_start"] = tstart
-    cumulative["t_end"] = tend
+    cumulative["t_start"] = starts
+    cumulative["t_end"] = ends
     return cumulative
+
 
 ######################################################
 # Statistics
