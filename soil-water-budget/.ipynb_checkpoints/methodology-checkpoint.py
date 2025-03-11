@@ -318,6 +318,32 @@ def compute_cumulative_flux_within_timespan(flux_data, date_start, date_end):
     cumulative["t_start"] = starts
     cumulative["t_end"] = ends
     return cumulative
+    
+def compute_mean_flux_within_timespan(flux_data, date_start, date_end, regex):
+    # fundamental theorem of calculus to compute total flux between date_start and date_end
+    tminus_start, tminus_end = 366 - pd.to_datetime([date_start, date_end]).dayofyear
+    
+    starts = pd.date_range("2019-01-01", "2025-12-31", freq="1YE") - pd.Timedelta(f"{tminus_start}d")
+    if int(date_start.split("-")[1]) >= 10:
+        starts = pd.date_range("2019-01-01", "2025-01-01", freq="YS") - pd.Timedelta(f"{tminus_start}d")
+    
+    ends = pd.date_range("2019-01-01", "2025-12-31", freq="1YE") - pd.Timedelta(f"{tminus_end}d")
+    if int(date_end.split("-")[1]) >= 10: 
+        ends = pd.date_range("2019-01-01", "2025-01-01", freq="1YS") - pd.Timedelta(f"{tminus_end}d")
+        
+    while (starts[-1] not in flux_data.index) or (ends[-1] not in flux_data.index):
+        starts = starts[:-1]
+        ends = ends[:-1]
+
+    dfs = []
+    for start, end in zip(starts, ends):
+        df = pd.DataFrame(flux_data.filter(regex=regex).loc[start:end].mean()).T
+        df["t_start"] = start
+        df["t_end"] = end
+        dfs.append(df)
+    mean = pd.concat(dfs)
+    return mean
+
 
 
 ######################################################
