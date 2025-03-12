@@ -89,3 +89,21 @@ def make_timeseries_continuous(incomplete_df, tmin, tmax, freq):
     ref_ts = pd.DataFrame(dict(TIMESTAMP=pd.date_range(tmin, tmax, freq="30min"))).set_index(incomplete_df.index.name)
     return incomplete_df.merge(ref_ts, left_index=True, right_index=True, how="right")
 
+def label_subplot(ax, label, left_pad=0.02, top_pad=0.015):
+    xmin, xmax = ax.get_xlim()
+    ymin, ymax = ax.get_ylim()
+    ax.text(
+        xmin + (xmax - xmin)*left_pad, 
+        ymax - (ymax - ymin)*top_pad, 
+        label, 
+        bbox=dict(
+            facecolor='white', 
+            edgecolor='k', 
+            lw=0.5, 
+            pad=1.5, 
+            mutation_aspect=0.5
+        ), 
+        verticalalignment="top", 
+        horizontalalignment="left"
+    )
+    return ax
