@@ -502,8 +502,7 @@ def penman_monteith_meas_ustar(T_c, Rn_W, G_W, vpd_kPa, LAI, u, ustar, Pa_kPa):
     d = delta_tetens(T_c)*1000  # Pa C-1
     y = 1.005*Pa_kPa / (2.45*0.622)  # Pa C-1
     rho_a = Pa_kPa*1000 / (287.05*(T_c+273.15))  # kg m-3
-
-    zd, z0 = 0.7*zc, 0.1*zc
+    
     Ca = ustar**2/(6.25*u*0.4**2)  # m s-1
     Cc = 0.5*LAI*0.005  # m s-1
     Lv = 2453e3 # kJ m-3
