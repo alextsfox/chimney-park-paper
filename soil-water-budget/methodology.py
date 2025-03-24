@@ -485,6 +485,37 @@ def penman_monteith(T_c, Rn_W, G_W, vpd_kPa, LAI, u, zm, zc, Pa_kPa):
 
     return (rad_term + atm_term)/denom * 1000/(2257e3*997)  # mm/s
 
+def penman_monteith_meas_ustar(T_c, Rn_W, G_W, vpd_kPa, LAI, u, ustar, Pa_kPa):
+    """Penman monteith equation for PET. Uses M-O theory to derive atmospheric conductance, and uses a rough approximation for canopy conductance based on LAI and maximum stomatal conductance
+
+    T_c: temp in C
+    Rn_W: net radiation in W/m2
+    G_W: ground heat flux in W/m2
+    vpd_kPA: VPD in ... well...kPa
+    LAI: leaf area index
+    u: windspeed in m/s
+    ustar: friction velocity in m/s
+    Pa_kPa: air pressure in kPa
+
+    returns: PET in mm/s
+    """
+    d = delta_tetens(T_c)*1000  # Pa C-1
+    y = 1.005*Pa_kPa / (2.45*0.622)  # Pa C-1
+    rho_a = Pa_kPa*1000 / (287.05*(T_c+273.15))  # kg m-3
+
+    zd, z0 = 0.7*zc, 0.1*zc
+    Ca = ustar**2/(6.25*u*0.4**2)  # m s-1
+    Cc = 0.5*LAI*0.005  # m s-1
+    Lv = 2453e3 # kJ m-3
+
+    # print(Ca, Cc)
+    
+    rad_term = d*(Rn_W - G_W)
+    atm_term = rho_a*1005*vpd_kPa*1000*Ca
+    denom = (d + y*(1+Ca/Cc))#*Lv
+
+    return (rad_term + atm_term)/denom * 1000/(2257e3*997)  # mm/s
+
 def FAO56_PM(T_c, Rn_MJ_d, G_MJ_d, vpd_kPa, Pa_kPa, u):
     """FAO 1956 Penman monteith equation for PET. 
 
