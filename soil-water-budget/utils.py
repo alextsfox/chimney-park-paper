@@ -13,8 +13,16 @@ from statsmodels.formula.api import ols
 def load_flux_data(path):
     flux = (
         pd.read_csv(path, sep="\t", skiprows=[1], na_values=-9999, parse_dates=["Date Time"])
-        [["Date Time", "LE_uStar_f", "NEE_uStar_f", "GPP_uStar_f", "Reco_uStar", "Tair_f", "VPD_f"]]
-        .rename(columns={"Date Time":"TIMESTAMP", "LE_uStar_f":"LE",  "NEE_uStar_f":"NEE", "GPP_uStar_f":"GPP", "Reco_uStar":"Reco", "Tair_f":"TA", "VPD_f":"VPD"})
+        [["Date Time", "LE_uStar_f", "NEE_uStar_f", "GPP_uStar_f", "Reco_uStar", "Tair_f", "VPD_f", "Ustar"]]
+        .rename(columns={
+            "Date Time":"TIMESTAMP", 
+            "LE_uStar_f":"LE",  
+            "NEE_uStar_f":"NEE", 
+            "GPP_uStar_f":"GPP", 
+            "Reco_uStar":"Reco", 
+            "Tair_f":"TA", 
+            "VPD_f":"VPD"
+        })
     )
     
     # convert W/m2 latent heat flux to m/day evapotranspiration
@@ -27,7 +35,7 @@ def load_flux_data(path):
     flux["GPP"] = flux["GPP"] * 1e-6*86400*M_C
     flux["Reco"] = flux["Reco"] * 1e-6*86400*M_C
     
-    flux = flux[["TIMESTAMP", "ET", "NEE", "GPP", "Reco", "VPD", "TA"]].sort_values("TIMESTAMP").set_index("TIMESTAMP")
+    flux = flux[["TIMESTAMP", "ET", "NEE", "GPP", "Reco", "VPD", "TA", "Ustar"]].sort_values("TIMESTAMP").set_index("TIMESTAMP")
     return flux
 
 def get_rg_ws(fullout_path, reddyproc_path, rnet_path):
